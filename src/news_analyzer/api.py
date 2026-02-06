@@ -44,16 +44,20 @@ async def basic(request: Request):
 
         logger.info(f"Processing topic: {utterance}")
 
-        # Crew 실행
-        inputs = {'topic': utterance}
-        result = NewsAnalyzerCrew().crew().kickoff(inputs=inputs)
+        # TODO: 실제 분석은 시간이 너무 오래 걸림 (1-3분)
+        # 카카오톡 타임아웃: 5초
 
-        # 결과 텍스트 변환 및 길이 제한 (카카오톡 제한: 1000자)
-        result_text = str(result)
-        if len(result_text) > 1000:
-            result_text = result_text[:997] + "..."
+        # 임시: 빠른 응답 (연동 테스트용)
+        result_text = f"'{utterance}' 주제로 뉴스 분석을 요청하셨습니다.\n\n분석에는 1-3분 정도 소요됩니다.\n현재는 테스트 모드입니다."
 
-        logger.info(f"Analysis completed for: {utterance}")
+        # 실제 분석 (주석 처리)
+        # inputs = {'topic': utterance}
+        # result = NewsAnalyzerCrew().crew().kickoff(inputs=inputs)
+        # result_text = str(result)
+        # if len(result_text) > 1000:
+        #     result_text = result_text[:997] + "..."
+
+        logger.info(f"Response prepared for: {utterance}")
 
         # 카카오톡 응답 형식
         response = {
