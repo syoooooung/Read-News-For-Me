@@ -43,20 +43,18 @@ uv sync
 cp .env.example .env
 ```
 
-`.env` 파일을 편집하여 다음 API 키를 설정합니다:
+`.env` 파일을 편집하여 OpenAI API 키를 설정합니다:
 
 ```env
 # OpenAI API 키 (필수)
 OPENAI_API_KEY=sk-your-actual-key-here
-
-# Serper API 키 (필수)
-SERPER_API_KEY=your-actual-key-here
 ```
+
+**참고**: 뉴스 검색은 DuckDuckGo Search를 사용하므로 별도의 API 키가 필요하지 않습니다.
 
 #### API 키 발급 방법
 
 - **OpenAI API**: [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)
-- **Serper API**: [https://serper.dev/](https://serper.dev/) (무료 계정으로 시작 가능)
 
 ## 사용 방법
 
@@ -152,15 +150,11 @@ cat .env
 uv sync --reinstall
 ```
 
-### Serper API 제한
-
-Serper 무료 계정은 일일 검색 횟수에 제한이 있습니다. 제한에 도달한 경우 다음날 다시 시도하거나 유료 플랜으로 업그레이드하세요.
-
 ## 기술 스택
 
 - **CrewAI**: Multi-agent orchestration framework
 - **OpenAI GPT**: LLM (기본 모델)
-- **Serper API**: 웹 검색
+- **DuckDuckGo Search**: 무료 웹 검색 (API 키 불필요)
 - **uv**: 빠른 Python 패키지 관리자
 
 ## 라이선스

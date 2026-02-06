@@ -1,7 +1,7 @@
 # src/news_analyzer/crew.py
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
-from crewai_tools import SerperDevTool
+from crewai_tools import DuckDuckGoSearchRun
 from typing import List
 
 
@@ -18,7 +18,7 @@ class NewsAnalyzerCrew:
         return Agent(
             config=self.agents_config['researcher'],
             verbose=True,
-            tools=[SerperDevTool()]  # 웹 검색 도구 제공
+            tools=[DuckDuckGoSearchRun()]  # 무료 웹 검색 도구 (API 키 불필요)
         )
 
     @agent

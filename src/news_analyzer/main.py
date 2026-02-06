@@ -46,7 +46,6 @@ def run():
         print(f"\n오류가 발생했습니다: {str(e)}")
         print("\n환경 변수를 확인해주세요:")
         print("  - OPENAI_API_KEY: OpenAI API 키")
-        print("  - SERPER_API_KEY: Serper.dev API 키")
         sys.exit(1)
 
 
