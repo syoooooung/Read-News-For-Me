@@ -1,0 +1,16 @@
+[project]
+name = "read-news-for-me"
+version = "0.1.0"
+description = "CrewAI 기반 뉴스 요약 및 관점 정리 에이전트 시스템"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[tools]>=1.9.3",
+]
+
+[project.scripts]
+news-analyzer = "news_analyzer.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

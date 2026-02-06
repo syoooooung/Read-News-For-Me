@@ -1,0 +1,73 @@
+# src/news_analyzer/crew.py
+from crewai import Agent, Crew, Process, Task
+from crewai.project import CrewBase, agent, crew, task
+from crewai_tools import SerperDevTool
+from typing import List
+
+
+@CrewBase
+class NewsAnalyzerCrew:
+    """뉴스 요약 및 관점 정리 Crew"""
+
+    agents_config = 'config/agents.yaml'
+    tasks_config = 'config/tasks.yaml'
+
+    @agent
+    def researcher(self) -> Agent:
+        """뉴스 수집 에이전트"""
+        return Agent(
+            config=self.agents_config['researcher'],
+            verbose=True,
+            tools=[SerperDevTool()]  # 웹 검색 도구 제공
+        )
+
+    @agent
+    def summarizer(self) -> Agent:
+        """뉴스 요약 에이전트"""
+        return Agent(
+            config=self.agents_config['summarizer'],
+            verbose=True
+        )
+
+    @agent
+    def analyst(self) -> Agent:
+        """관점 분석 에이전트"""
+        return Agent(
+            config=self.agents_config['analyst'],
+            verbose=True
+        )
+
+    @task
+    def research_task(self) -> Task:
+        """뉴스 수집 태스크"""
+        return Task(
+            config=self.tasks_config['research_task'],
+            agent=self.researcher()
+        )
+
+    @task
+    def summarize_task(self) -> Task:
+        """뉴스 요약 태스크"""
+        return Task(
+            config=self.tasks_config['summarize_task'],
+            agent=self.summarizer()
+        )
+
+    @task
+    def analyze_task(self) -> Task:
+        """관점 분석 태스크"""
+        return Task(
+            config=self.tasks_config['analyze_task'],
+            agent=self.analyst(),
+            output_file='news_analysis.md'
+        )
+
+    @crew
+    def crew(self) -> Crew:
+        """뉴스 분석 Crew 생성"""
+        return Crew(
+            agents=self.agents,  # @agent 데코레이터로 자동 생성됨
+            tasks=self.tasks,    # @task 데코레이터로 자동 생성됨
+            process=Process.sequential,  # 순차적 실행
+            verbose=True,
+        )
