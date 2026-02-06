@@ -1,14 +1,22 @@
-# 뉴스 요약 및 관점 정리 에이전트 (read-news-for-me)
+# 기술 뉴스 요약 및 관점 정리 에이전트 (read-news-for-me)
 
-CrewAI를 활용한 AI 뉴스 분석 시스템입니다. 주어진 주제에 대한 최신 뉴스를 자동으로 수집하고, 핵심 내용을 요약하며, 다양한 관점을 분석합니다.
+CrewAI를 활용한 AI 기술 뉴스 분석 API 서버입니다. GeekNews, Hacker News, PyTorch 블로그 등 주요 기술 커뮤니티에서 주어진 주제에 대한 최신 글을 자동으로 수집하고, 핵심 내용을 요약하며, 다양한 관점을 분석합니다.
+
+**카카오톡 챗봇 연동 가능**
 
 ## 특징
 
 ### 🤖 3개의 전문 AI 에이전트
 
-1. **Researcher (뉴스 수집가)**: 주제와 관련된 최신 뉴스 기사를 검색하고 수집
-2. **Summarizer (요약 전문가)**: 수집된 기사를 분석하여 핵심 내용을 5줄로 요약
+1. **Researcher (기술 뉴스 수집가)**: GeekNews, Hacker News, PyTorch 블로그에서 주제 관련 최신 글 수집
+2. **Summarizer (요약 전문가)**: 수집된 글들을 분석하여 핵심 내용을 5줄로 요약
 3. **Analyst (심층 분석가)**: 주요 쟁점 3가지와 서로 다른 관점 2가지를 도출
+
+### 🌐 자동 웹 스크래핑
+
+- **GeekNews** (https://news.hada.io/)
+- **Hacker News** (https://news.ycombinator.com/)
+- **PyTorch Blog** (https://pytorch.org/blog/)
 
 ### 📊 출력 결과
 
@@ -16,7 +24,7 @@ CrewAI를 활용한 AI 뉴스 분석 시스템입니다. 주어진 주제에 대
 - **주요 쟁점 3가지**
 - **서로 다른 관점 2가지**
 
-결과는 `news_analysis.md` 파일로 저장됩니다.
+결과는 API 응답으로 반환됩니다.
 
 ## 설치 방법
 
@@ -50,7 +58,7 @@ cp .env.example .env
 OPENAI_API_KEY=sk-your-actual-key-here
 ```
 
-**참고**: 뉴스 검색은 DuckDuckGo Search를 사용하므로 별도의 API 키가 필요하지 않습니다.
+**참고**: 기술 뉴스 수집은 웹 스크래핑을 사용하므로 별도의 검색 API 키가 필요하지 않습니다.
 
 #### API 키 발급 방법
 
@@ -58,41 +66,35 @@ OPENAI_API_KEY=sk-your-actual-key-here
 
 ## 사용 방법
 
-### 기본 실행
+### API 서버 실행
 
 ```bash
-# 가상환경 활성화 (자동)
-uv run python src/news_analyzer/main.py
+# 서버 시작
+uv run uvicorn news_analyzer.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-대화형으로 주제를 입력하라는 메시지가 나타납니다.
+서버가 실행되면 http://localhost:8000 에서 접근 가능합니다.
 
-### 주제를 인자로 전달
+### API 테스트
 
 ```bash
-uv run python src/news_analyzer/main.py "AI 기술 발전"
+# curl로 테스트
+curl -X POST http://localhost:8000/basic \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userRequest": {
+      "utterance": "AI 기술"
+    }
+  }'
 ```
 
-### 실행 예시
+### 카카오톡 챗봇 연동
 
-```bash
-$ uv run python src/news_analyzer/main.py "기후 변화"
+1. [카카오 i 오픈빌더](https://i.kakao.com/)에서 챗봇 생성
+2. 스킬 서버 URL에 `http://your-server:8000/basic` 입력
+3. 챗봇에 주제 입력 시 자동으로 뉴스 분석 실행
 
-============================================================
-뉴스 요약 및 관점 정리 에이전트
-============================================================
-
-주제: 기후 변화
-분석을 시작합니다...
-
-[에이전트들이 작업을 수행합니다...]
-
-============================================================
-분석이 완료되었습니다!
-============================================================
-
-결과가 'news_analysis.md' 파일에 저장되었습니다.
-```
+자세한 연동 방법은 [카카오톡 챗봇 가이드](https://wikidocs.net/280514) 참고
 
 ## 프로젝트 구조
 
@@ -104,11 +106,11 @@ read-news-for-me/
 ├── pyproject.toml                # 프로젝트 설정
 ├── README.md                     # 이 파일
 ├── Claude.md                     # CrewAI 가이드
-├── news_analysis.md              # 출력 결과 (생성됨)
 └── src/
     └── news_analyzer/
         ├── __init__.py
-        ├── main.py               # 진입점
+        ├── api.py                # FastAPI 서버 (카카오톡 챗봇 연동)
+        ├── main.py               # CLI 실행 (옵션)
         ├── crew.py               # Crew 정의
         ├── config/
         │   ├── agents.yaml       # 에이전트 설정
@@ -130,6 +132,10 @@ read-news-for-me/
 ### 도구 추가
 
 `src/news_analyzer/tools/` 디렉토리에 커스텀 도구를 추가하고, `crew.py`에서 에이전트에 할당할 수 있습니다.
+
+### API 응답 형식 수정
+
+`src/news_analyzer/api.py` 파일을 수정하여 응답 형식을 변경할 수 있습니다. 현재는 카카오톡 챗봇 형식으로 설정되어 있습니다.
 
 ## 문제 해결
 
@@ -154,8 +160,19 @@ uv sync --reinstall
 
 - **CrewAI**: Multi-agent orchestration framework
 - **OpenAI GPT**: LLM (기본 모델)
-- **DuckDuckGo Search**: 무료 웹 검색 (API 키 불필요)
+- **FastAPI**: 고성능 웹 API 프레임워크
+- **Uvicorn**: ASGI 서버
+- **ScrapeWebsiteTool**: 웹 스크래핑 (API 키 불필요)
 - **uv**: 빠른 Python 패키지 관리자
+
+## 수집 대상 사이트
+
+이 프로젝트는 다음 기술 커뮤니티에서 뉴스를 수집합니다:
+- GeekNews (https://news.hada.io/)
+- Hacker News (https://news.ycombinator.com/)
+- PyTorch Blog (https://pytorch.org/blog/)
+
+더 많은 사이트를 추가하려면 `src/news_analyzer/crew.py`의 `TECH_NEWS_SITES` 리스트를 수정하세요.
 
 ## 라이선스
 
@@ -166,3 +183,4 @@ MIT License
 - [CrewAI 공식 문서](https://docs.crewai.com)
 - [CrewAI GitHub](https://github.com/crewAIInc/crewAI)
 - [CrewAI 예제](https://github.com/crewAIInc/crewAI-examples)
+- [카카오톡 챗봇 연동 가이드](https://wikidocs.net/280514)
