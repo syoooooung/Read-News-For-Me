@@ -14,3 +14,12 @@ https://docs.crewai.com/en/concepts/tools
 https://docs.crewai.com/en/mcp/overview
 https://docs.crewai.com/en/tools/overview
 https://docs.crewai.com/en/observability/tracing
+
+
+# 카카오 챗 개발 가이드
+https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/make_skill
+https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/apply_skill_to_block
+https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/apply_skill_to_plugin
+https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/answer_json_format
+https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/check_skill_error_history
+https://kakaobusiness.gitbook.io/main/tool/chatbot/skill_guide/ai_chatbot_callback_guide
