@@ -331,11 +331,6 @@ python-multipart==0.0.22
     # via mcp
 pytube==15.0.0
     # via crewai-tools
-pywin32==311
-    # via
-    #   docker
-    #   mcp
-    #   portalocker
 pyyaml==6.0.3
     # via
     #   chromadb
