@@ -1,3 +1,7 @@
+from contextlib import asynccontextmanager
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import FastAPI, Request, HTTPException
 from news_analyzer.crew import NewsAnalyzerCrew
 import logging
@@ -5,12 +9,44 @@ import threading
 import requests as http_requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="기술 뉴스 분석 봇")
+# 인메모리 캐시: {"YYYY-MM-DD": "분석 결과 텍스트"}
+_analysis_cache: dict[str, str] = {}
+_cache_lock = threading.Lock()
+KST = ZoneInfo("Asia/Seoul")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """앱 시작 시 스케줄러 가동, 종료 시 정리"""
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        run_daily_analysis,
+        trigger=CronTrigger(hour=7, minute=0, timezone=KST),
+        id="daily_geeknews",
+        replace_existing=True,
+    )
+    scheduler.start()
+    logger.info("[Scheduler] Started — daily 7 AM KST job registered")
+
+    # 기동 시 오늘 캐시 없으면 즉시 백그라운드 실행
+    if not get_cached_analysis():
+        logger.info("[Scheduler] No cache for today, running now...")
+        threading.Thread(target=run_daily_analysis, daemon=True).start()
+
+    yield
+
+    scheduler.shutdown(wait=False)
+    logger.info("[Scheduler] Shut down")
+
+
+app = FastAPI(title="기술 뉴스 분석 봇", lifespan=lifespan)
 
 
 def scrape_geeknews_top():
@@ -102,6 +138,42 @@ def analyze_with_llm(article: dict, detail_text: str) -> str:
     )
 
     return response.choices[0].message.content
+
+
+def run_daily_analysis():
+    """매일 7AM KST에 실행: 긱뉴스 1위 기사를 CrewAI로 분석 후 캐시 저장"""
+    today_str = datetime.now(KST).strftime("%Y-%m-%d")
+    logger.info(f"[Scheduler] Starting daily analysis for {today_str}")
+
+    try:
+        article = scrape_geeknews_top()
+        if not article or not article.get("title"):
+            logger.warning("[Scheduler] No article found on GeekNews")
+            return
+
+        topic = article["title"]
+        logger.info(f"[Scheduler] Running CrewAI for: {topic}")
+
+        result = NewsAnalyzerCrew().crew().kickoff(inputs={"topic": topic})
+        result_text = str(result)
+
+        if len(result_text) > 1000:
+            result_text = result_text[:997] + "..."
+
+        with _cache_lock:
+            _analysis_cache[today_str] = result_text
+
+        logger.info(f"[Scheduler] Cached for {today_str} ({len(result_text)} chars)")
+
+    except Exception as e:
+        logger.error(f"[Scheduler] Daily analysis failed: {e}", exc_info=True)
+
+
+def get_cached_analysis() -> str | None:
+    """오늘의 캐시된 분석 결과 반환, 없으면 None"""
+    today_str = datetime.now(KST).strftime("%Y-%m-%d")
+    with _cache_lock:
+        return _analysis_cache.get(today_str)
 
 
 def process_and_callback(callback_url: str):
@@ -253,7 +325,22 @@ async def geeknews(request: Request):
         req_data = await request.json()
         logger.info(f"GeekNews request received: {req_data}")
 
-        # 콜백 URL 확인 (AI 챗봇 콜백 기능이 활성화된 경우)
+        # 1순위: 캐시된 CrewAI 분석 결과 (즉시 반환)
+        cached = get_cached_analysis()
+        if cached:
+            logger.info("Returning cached CrewAI analysis")
+            return {
+                "version": "2.0",
+                "template": {
+                    "outputs": [{
+                        "simpleText": {
+                            "text": cached
+                        }
+                    }]
+                }
+            }
+
+        # 2순위: 콜백 URL 확인 (AI 챗봇 콜백 기능이 활성화된 경우)
         callback_url = req_data.get("userRequest", {}).get("callbackUrl")
 
         if callback_url:
@@ -274,8 +361,8 @@ async def geeknews(request: Request):
                 }
             }
 
-        # 일반 모드: 5초 내 빠른 응답 (스크래핑만, LLM 분석 없음)
-        logger.info("Using quick response mode (no callback)")
+        # 3순위: 빠른 스크래핑 (캐시도 콜백도 없을 때)
+        logger.info("Using quick response mode (no cache, no callback)")
         article = scrape_geeknews_top()
 
         if not article:

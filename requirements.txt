@@ -22,6 +22,8 @@ anyio==4.12.1
     #   watchfiles
 appdirs==1.4.4
     # via crewai
+apscheduler==3.11.2
+    # via read-news-for-me (pyproject.toml)
 attrs==25.4.0
     # via
     #   aiohttp
@@ -59,6 +61,12 @@ click==8.1.8
     #   crewai
     #   lancedb
     #   typer
+    #   uvicorn
+colorama==0.4.6
+    # via
+    #   build
+    #   click
+    #   tqdm
     #   uvicorn
 crewai==1.9.3
     # via
@@ -118,8 +126,6 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
-hf-xet==1.2.0
-    # via huggingface-hub
 httpcore==1.0.9
     # via httpx
 httptools==0.7.1
@@ -325,6 +331,11 @@ python-multipart==0.0.22
     # via mcp
 pytube==15.0.0
     # via crewai-tools
+pywin32==311
+    # via
+    #   docker
+    #   mcp
+    #   portalocker
 pyyaml==6.0.3
     # via
     #   chromadb
@@ -417,9 +428,7 @@ typer==0.21.1
     #   instructor
 typing-extensions==4.15.0
     # via
-    #   aiosignal
     #   aiosqlite
-    #   anyio
     #   beautifulsoup4
     #   chromadb
     #   fastapi
@@ -435,8 +444,6 @@ typing-extensions==4.15.0
     #   pydantic
     #   pydantic-core
     #   python-docx
-    #   referencing
-    #   starlette
     #   typer
     #   typing-inspection
 typing-inspection==0.4.2
@@ -445,6 +452,10 @@ typing-inspection==0.4.2
     #   mcp
     #   pydantic
     #   pydantic-settings
+tzdata==2025.3
+    # via tzlocal
+tzlocal==5.3.1
+    # via apscheduler
 urllib3==2.6.3
     # via
     #   docker
@@ -457,8 +468,6 @@ uvicorn==0.40.0
     #   read-news-for-me (pyproject.toml)
     #   chromadb
     #   mcp
-uvloop==0.22.1
-    # via uvicorn
 virtualenv==20.36.1
     # via pre-commit
 watchfiles==1.1.1
