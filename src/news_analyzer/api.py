@@ -152,13 +152,15 @@ def run_daily_analysis():
             return
 
         topic = article["title"]
+        link = article.get("link", "")
         logger.info(f"[Scheduler] Running CrewAI for: {topic}")
 
         result = NewsAnalyzerCrew().crew().kickoff(inputs={"topic": topic})
         result_text = str(result)
 
-        if len(result_text) > 1000:
-            result_text = result_text[:997] + "..."
+        # 원문 링크를 하단에 첨부
+        if link:
+            result_text = result_text.strip() + f"\n\n[원문 링크]\n{link}"
 
         with _cache_lock:
             _analysis_cache[today_str] = result_text
@@ -188,20 +190,9 @@ def process_and_callback(callback_url: str):
                 detail_text = scrape_geeknews_detail(article["topic_id"])
 
             result_text = analyze_with_llm(article, detail_text)
-            if len(result_text) > 1000:
-                result_text = result_text[:997] + "..."
 
         # 콜백 URL로 결과 전송
-        callback_response = {
-            "version": "2.0",
-            "template": {
-                "outputs": [{
-                    "simpleText": {
-                        "text": result_text
-                    }
-                }]
-            }
-        }
+        callback_response = build_kakao_response(result_text)
 
         http_requests.post(callback_url, json=callback_response, timeout=5)
         logger.info("Callback sent successfully")
@@ -222,6 +213,51 @@ def process_and_callback(callback_url: str):
             http_requests.post(callback_url, json=error_response, timeout=5)
         except Exception:
             logger.error("Failed to send error callback", exc_info=True)
+
+
+def build_kakao_response(text: str) -> dict:
+    """카카오톡 응답 생성 (긴 텍스트는 여러 출력으로 분할, 최대 3개)"""
+    MAX_LEN = 1000
+
+    if len(text) <= MAX_LEN:
+        return {
+            "version": "2.0",
+            "template": {
+                "outputs": [{"simpleText": {"text": text}}]
+            }
+        }
+
+    # 문단 단위(\n\n)로 분할하여 논리적 단위 유지
+    paragraphs = text.split("\n\n")
+    chunks = []
+    current = ""
+
+    for para in paragraphs:
+        candidate = (current + "\n\n" + para).strip() if current else para
+        if len(candidate) > MAX_LEN and current:
+            chunks.append(current.strip())
+            current = para
+        else:
+            current = candidate
+
+    if current.strip():
+        chunks.append(current.strip())
+
+    # 카카오 최대 3개 output — 초과 시 마지막에 합침
+    while len(chunks) > 3:
+        chunks[-2] = chunks[-2] + "\n\n" + chunks[-1]
+        chunks.pop()
+
+    # 개별 청크가 여전히 1000자 초과 시 잘라냄
+    for i in range(len(chunks)):
+        if len(chunks[i]) > MAX_LEN:
+            chunks[i] = chunks[i][:MAX_LEN - 3] + "..."
+
+    outputs = [{"simpleText": {"text": chunk}} for chunk in chunks]
+    return {
+        "version": "2.0",
+        "template": {"outputs": outputs}
+    }
 
 
 @app.get("/")
@@ -329,16 +365,7 @@ async def geeknews(request: Request):
         cached = get_cached_analysis()
         if cached:
             logger.info("Returning cached CrewAI analysis")
-            return {
-                "version": "2.0",
-                "template": {
-                    "outputs": [{
-                        "simpleText": {
-                            "text": cached
-                        }
-                    }]
-                }
-            }
+            return build_kakao_response(cached)
 
         # 2순위: 콜백 URL 확인 (AI 챗봇 콜백 기능이 활성화된 경우)
         callback_url = req_data.get("userRequest", {}).get("callbackUrl")
@@ -368,35 +395,25 @@ async def geeknews(request: Request):
         if not article:
             result_text = "긱뉴스에서 기사를 가져올 수 없습니다.\n잠시 후 다시 시도해주세요."
         else:
-            result_text = (
-                f"오늘의 긱뉴스 TOP 1\n\n"
-                f"제목: {article['title']}\n\n"
-                f"{article['description']}\n\n"
-                f"원문: {article['link']}"
-            )
-            if len(result_text) > 1000:
-                result_text = result_text[:997] + "..."
+            # 상세 내용도 가져오기
+            detail_text = ""
+            if article.get("topic_id"):
+                try:
+                    detail_text = scrape_geeknews_detail(article["topic_id"])
+                except Exception:
+                    pass
 
-        return {
-            "version": "2.0",
-            "template": {
-                "outputs": [{
-                    "simpleText": {
-                        "text": result_text
-                    }
-                }]
-            }
-        }
+            # 요약을 위에, 원문 링크를 아래에
+            parts = [f"오늘의 긱뉴스 TOP 1\n\n제목: {article['title']}"]
+            if article.get("description"):
+                parts.append(article["description"])
+            if detail_text:
+                parts.append(detail_text[:500])
+            parts.append(f"[원문 링크]\n{article['link']}")
+            result_text = "\n\n".join(parts)
+
+        return build_kakao_response(result_text)
 
     except Exception as e:
         logger.error(f"GeekNews error: {str(e)}", exc_info=True)
-        return {
-            "version": "2.0",
-            "template": {
-                "outputs": [{
-                    "simpleText": {
-                        "text": f"오류가 발생했습니다: {str(e)}\n잠시 후 다시 시도해주세요."
-                    }
-                }]
-            }
-        }
+        return build_kakao_response(f"오류가 발생했습니다: {str(e)}\n잠시 후 다시 시도해주세요.")
